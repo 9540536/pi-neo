@@ -87,6 +87,61 @@ const assets = {
 	"wasm/photon_rs_bg.wasm": join(repoRoot, "node_modules/@silvia-odwyer/photon-node/photon_rs_bg.wasm"),
 };
 
+// Per-target native addons. Linux needs none (clipboard uses wl-copy/xclip and
+// there is no terminal native); darwin and windows each need their clipboard
+// binding plus a terminal native. The platform binding packages are installed
+// by scripts/build-binaries.sh; for a host build (no --target) we target the
+// host platform so a dev build on macOS/Windows embeds the right addon.
+const nativeAddons = {
+	"bun-darwin-arm64": {
+		"node/clipboard.node": join(
+			repoRoot,
+			"node_modules/@mariozechner/clipboard-darwin-arm64/clipboard.darwin-arm64.node",
+		),
+		"node/darwin-modifiers.node": join(
+			repoRoot,
+			"packages/tui/native/darwin/prebuilds/darwin-arm64/darwin-modifiers.node",
+		),
+	},
+	"bun-darwin-x64": {
+		"node/clipboard.node": join(
+			repoRoot,
+			"node_modules/@mariozechner/clipboard-darwin-x64/clipboard.darwin-x64.node",
+		),
+		"node/darwin-modifiers.node": join(
+			repoRoot,
+			"packages/tui/native/darwin/prebuilds/darwin-x64/darwin-modifiers.node",
+		),
+	},
+	"bun-windows-x64": {
+		"node/clipboard.node": join(
+			repoRoot,
+			"node_modules/@mariozechner/clipboard-win32-x64-msvc/clipboard.win32-x64-msvc.node",
+		),
+		"node/win32-console-mode.node": join(
+			repoRoot,
+			"packages/tui/native/win32/prebuilds/win32-x64/win32-console-mode.node",
+		),
+	},
+	"bun-windows-arm64": {
+		"node/clipboard.node": join(
+			repoRoot,
+			"node_modules/@mariozechner/clipboard-win32-arm64-msvc/clipboard.win32-arm64-msvc.node",
+		),
+		"node/win32-console-mode.node": join(
+			repoRoot,
+			"packages/tui/native/win32/prebuilds/win32-arm64/win32-console-mode.node",
+		),
+	},
+};
+
+function hostTargetKey() {
+	const platform = process.platform === "darwin" ? "darwin" : process.platform === "win32" ? "windows" : "linux";
+	return `bun-${platform}-${process.arch}`;
+}
+const targetKey = args.target ?? hostTargetKey();
+Object.assign(assets, nativeAddons[targetKey] ?? {});
+
 const entrypoints = [args.entry];
 if (args.worker) {
 	entrypoints.push(args.worker);
@@ -118,12 +173,19 @@ const result = await Bun.build({
 					namespace: "pi-asset",
 				}));
 				build.onLoad({ filter: /.*/, namespace: "pi-asset" }, (a) => {
-					// Look up the logical name in the assets map; fall back to a
-					// dist-relative path for any asset not explicitly listed.
-					const abs = assets[a.path] ?? join(distRoot, a.path);
-					// `loader: "file"` embeds the bytes and replaces the import with a
-					// `$bunfs` path string that readFileSync/Bun.file can read back.
-					return { contents: readFileSync(abs), loader: "file" };
+					const mapped = assets[a.path];
+					if (mapped) {
+						return { contents: readFileSync(mapped), loader: "file" };
+					}
+					// Native-addon names not applicable to this target (e.g. the
+					// darwin addon on a linux build) embed as an empty stub so the
+					// static import in embedded-assets.ts still resolves; the runtime
+					// loader treats a 0-byte payload as "no native available".
+					if (a.path.startsWith("node/")) {
+						return { contents: new Uint8Array(0), loader: "file" };
+					}
+					// Any other asset is resolved relative to dist/.
+					return { contents: readFileSync(join(distRoot, a.path)), loader: "file" };
 				});
 			},
 		},

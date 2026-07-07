@@ -24,10 +24,15 @@ import announcementImage from "pi-asset:modes/interactive/assets/clankolas.png";
 // Built-in themes (custom/user themes stay on disk under ~/.pi).
 import darkTheme from "pi-asset:modes/interactive/theme/dark.json";
 import lightTheme from "pi-asset:modes/interactive/theme/light.json";
+// Native addons (per-target; the build embeds the platform-appropriate binding
+// or an empty stub for targets that don't use a given addon).
+import clipboardNode from "pi-asset:node/clipboard.node";
+import darwinModifiersNode from "pi-asset:node/darwin-modifiers.node";
+import win32ConsoleModeNode from "pi-asset:node/win32-console-mode.node";
 // Photon WASM (image processing). photon-node reads this via fs.readFileSync at
 // runtime; the embedded $bunfs path is fed to it through photon.ts's fallback.
 import photonWasm from "pi-asset:wasm/photon_rs_bg.wasm";
-import { registerEmbeddedAsset } from "../core/embedded-assets.ts";
+import { loadEmbeddedNative, registerEmbeddedAsset } from "../core/embedded-assets.ts";
 
 registerEmbeddedAsset("export-html/template.html", templateHtml);
 registerEmbeddedAsset("export-html/template.css", templateCss);
@@ -38,3 +43,12 @@ registerEmbeddedAsset("themes/dark.json", darkTheme);
 registerEmbeddedAsset("themes/light.json", lightTheme);
 registerEmbeddedAsset("interactive/assets/clankolas.png", announcementImage);
 registerEmbeddedAsset("wasm/photon_rs_bg.wasm", photonWasm);
+registerEmbeddedAsset("node/clipboard.node", clipboardNode);
+registerEmbeddedAsset("node/darwin-modifiers.node", darwinModifiersNode);
+registerEmbeddedAsset("node/win32-console-mode.node", win32ConsoleModeNode);
+
+// Expose a lazy native-addon loader on globalThis so the pi-tui package (which
+// this package depends on and therefore cannot import back) can load embedded
+// native addons without companion files on disk.
+(globalThis as { __piEmbeddedNative?: (name: string) => unknown }).__piEmbeddedNative = (name: string) =>
+	loadEmbeddedNative(name);

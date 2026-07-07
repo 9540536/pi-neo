@@ -25,6 +25,18 @@ function loadNativeModifiersHelper(): NativeModifiersHelper | undefined {
 	const arch = process.arch;
 	if (arch !== "x64" && arch !== "arm64") return undefined;
 
+	// Embedded (Bun compiled binary): the host package exposes a lazy native
+	// loader on globalThis so this package can use the embedded addon without a
+	// companion file on disk and without importing the host package.
+	const embeddedLoader = (globalThis as { __piEmbeddedNative?: (name: string) => unknown }).__piEmbeddedNative;
+	if (typeof embeddedLoader === "function") {
+		const embedded = embeddedLoader("darwin-modifiers.node") as unknown;
+		if (isNativeModifiersHelper(embedded)) {
+			nativeModifiersHelper = embedded;
+			return embedded;
+		}
+	}
+
 	const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 	const nativePath = path.join("native", "darwin", "prebuilds", `darwin-${arch}`, "darwin-modifiers.node");
 	const candidates = [

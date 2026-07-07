@@ -341,6 +341,22 @@ export class ProcessTerminal implements Terminal {
 			const arch = process.arch;
 			if (arch !== "x64" && arch !== "arm64") return;
 
+			// Embedded (Bun compiled binary): the host package exposes a lazy native
+			// loader on globalThis so this package can use the embedded addon without
+			// a companion file on disk.
+			const embeddedLoader = (globalThis as { __piEmbeddedNative?: (name: string) => unknown }).__piEmbeddedNative;
+			if (typeof embeddedLoader === "function") {
+				try {
+					const helper = embeddedLoader("win32-console-mode.node") as {
+						enableVirtualTerminalInput?: () => boolean;
+					};
+					helper?.enableVirtualTerminalInput?.();
+					return;
+				} catch {
+					// Fall through to disk-based candidates.
+				}
+			}
+
 			// Dynamic require so non-Windows and bundled/browser paths never load the
 			// native helper. In the npm package native/ is next to dist/; in compiled
 			// binary archives native/ is copied next to the executable.

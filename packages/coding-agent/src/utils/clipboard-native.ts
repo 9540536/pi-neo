@@ -1,6 +1,7 @@
 import { createRequire } from "module";
 import { dirname, join } from "path";
 import { pathToFileURL } from "url";
+import { loadEmbeddedNative } from "../core/embedded-assets.ts";
 
 export type ClipboardModule = {
 	setText: (text: string) => Promise<void>;
@@ -17,6 +18,12 @@ const hasDisplay = process.platform !== "linux" || Boolean(process.env.DISPLAY |
 export function loadClipboardNative(
 	requires: readonly ClipboardRequire[] = [moduleRequire, executableDirRequire],
 ): ClipboardModule | null {
+	// In a Bun compiled binary the platform binding is embedded; prefer it so no
+	// companion node_modules tree is needed next to the executable.
+	const embedded = loadEmbeddedNative<ClipboardModule>("clipboard.node");
+	if (embedded) {
+		return embedded;
+	}
 	for (const requireClipboard of requires) {
 		try {
 			return requireClipboard("@mariozechner/clipboard") as ClipboardModule;
