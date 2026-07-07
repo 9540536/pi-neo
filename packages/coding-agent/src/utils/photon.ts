@@ -69,11 +69,12 @@ function patchPhotonWasmRead(): () => void {
 			try {
 				return originalReadFileSync(...args);
 			} catch (error) {
-				const err = error as NodeJS.ErrnoException;
-				if (err?.code && err.code !== "ENOENT") {
-					throw error;
-				}
-
+				// The original path (photon-node's build-machine-baked __dirname)
+				// won't exist in a compiled binary. Try every fallback on ANY error
+				// — don't gate on err.code === ENOENT: on Windows the missing baked
+				// path surfaces a different error code, which would otherwise skip
+				// the embedded $bunfs fallback (confirmed via the pi-diag.exe trace:
+				// the embedded wasm reads fine once the fallback is reached).
 				for (const fallbackPath of fallbackPaths) {
 					// Try each fallback directly with readFileSync rather than gating on
 					// existsSync: on Bun compiled binaries the embedded `$bunfs` path
