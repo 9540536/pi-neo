@@ -21,7 +21,7 @@
  */
 
 import { mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
 function parseArgs(argv) {
@@ -69,6 +69,23 @@ if (!args.entry || !args.outfile) {
 // <dist-root>/bun/cli.js, so the default dist root is the entry directory's
 // parent unless overridden via --dist-root.
 const distRoot = resolve(args.distRoot ?? dirname(dirname(resolve(args.entry))));
+const repoRoot = resolve(distRoot, "../../.."); // monorepo root (for node_modules)
+
+// Map each `pi-asset:<name>` import to its source file. Most assets live under
+// dist/ (copied by copy-assets); the Photon WASM lives in node_modules and is
+// referenced by a stable logical name so the Bun-only embedded-assets module
+// stays target-agnostic. Native addons are added to this map per target below.
+const assets = {
+	"core/export-html/template.html": join(distRoot, "core/export-html/template.html"),
+	"core/export-html/template.css": join(distRoot, "core/export-html/template.css"),
+	"core/export-html/template.js": join(distRoot, "core/export-html/template.js"),
+	"core/export-html/vendor/marked.min.js": join(distRoot, "core/export-html/vendor/marked.min.js"),
+	"core/export-html/vendor/highlight.min.js": join(distRoot, "core/export-html/vendor/highlight.min.js"),
+	"modes/interactive/theme/dark.json": join(distRoot, "modes/interactive/theme/dark.json"),
+	"modes/interactive/theme/light.json": join(distRoot, "modes/interactive/theme/light.json"),
+	"modes/interactive/assets/clankolas.png": join(distRoot, "modes/interactive/assets/clankolas.png"),
+	"wasm/photon_rs_bg.wasm": join(repoRoot, "node_modules/@silvia-odwyer/photon-node/photon_rs_bg.wasm"),
+};
 
 const entrypoints = [args.entry];
 if (args.worker) {
@@ -101,7 +118,9 @@ const result = await Bun.build({
 					namespace: "pi-asset",
 				}));
 				build.onLoad({ filter: /.*/, namespace: "pi-asset" }, (a) => {
-					const abs = isAbsolute(a.path) ? a.path : join(distRoot, a.path);
+					// Look up the logical name in the assets map; fall back to a
+					// dist-relative path for any asset not explicitly listed.
+					const abs = assets[a.path] ?? join(distRoot, a.path);
 					// `loader: "file"` embeds the bytes and replaces the import with a
 					// `$bunfs` path string that readFileSync/Bun.file can read back.
 					return { contents: readFileSync(abs), loader: "file" };

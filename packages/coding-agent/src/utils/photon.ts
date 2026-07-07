@@ -17,6 +17,7 @@ import type { PathOrFileDescriptor } from "fs";
 import { createRequire } from "module";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { getEmbeddedAsset } from "../core/embedded-assets.ts";
 
 const require = createRequire(import.meta.url);
 const fs = require("fs") as typeof import("fs");
@@ -43,12 +44,16 @@ function pathOrNull(file: PathOrFileDescriptor): string | null {
 }
 
 function getFallbackWasmPaths(): string[] {
+	// In a Bun compiled binary the WASM is embedded and registered under
+	// wasm/<filename>; prefer that path so no companion file is needed.
+	const embedded = getEmbeddedAsset(`wasm/${WASM_FILENAME}`);
 	const execDir = path.dirname(process.execPath);
-	return [
+	const diskPaths = [
 		path.join(execDir, WASM_FILENAME),
 		path.join(execDir, "photon", WASM_FILENAME),
 		path.join(process.cwd(), WASM_FILENAME),
 	];
+	return embedded ? [embedded, ...diskPaths] : diskPaths;
 }
 
 function patchPhotonWasmRead(): () => void {

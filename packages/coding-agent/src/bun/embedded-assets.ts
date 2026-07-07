@@ -21,10 +21,12 @@ import highlightJs from "pi-asset:core/export-html/vendor/highlight.min.js";
 import markedJs from "pi-asset:core/export-html/vendor/marked.min.js";
 // Interactive-mode bundled image asset.
 import announcementImage from "pi-asset:modes/interactive/assets/clankolas.png";
-
 // Built-in themes (custom/user themes stay on disk under ~/.pi).
 import darkTheme from "pi-asset:modes/interactive/theme/dark.json";
 import lightTheme from "pi-asset:modes/interactive/theme/light.json";
+// Photon WASM (image processing). photon-node reads this via fs.readFileSync at
+// runtime; the embedded $bunfs path is fed to it through photon.ts's fallback.
+import photonWasm from "pi-asset:wasm/photon_rs_bg.wasm";
 import { registerEmbeddedAsset } from "../core/embedded-assets.ts";
 
 registerEmbeddedAsset("export-html/template.html", templateHtml);
@@ -35,3 +37,4 @@ registerEmbeddedAsset("export-html/vendor/highlight.min.js", highlightJs);
 registerEmbeddedAsset("themes/dark.json", darkTheme);
 registerEmbeddedAsset("themes/light.json", lightTheme);
 registerEmbeddedAsset("interactive/assets/clankolas.png", announcementImage);
+registerEmbeddedAsset("wasm/photon_rs_bg.wasm", photonWasm);
