@@ -20,7 +20,7 @@
  *     [--dist-root packages/coding-agent/dist]
  */
 
-import { mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
+import { chmodSync, cpSync, mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -217,7 +217,16 @@ if (!produced) {
 	process.exit(1);
 }
 if (produced !== target) {
-	renameSync(produced, target);
+	try {
+		renameSync(produced, target);
+	} catch (err) {
+		if (err?.code !== "EXDEV") throw err;
+		// Cross-device rename (e.g. outdir on /tmp, target on a WSL /mnt/c Windows
+		// mount): copy across filesystems, then drop the temp. chmod because cpSync
+		// may not preserve the executable bit.
+		cpSync(produced, target);
+		chmodSync(target, 0o755);
+	}
 }
 rmSync(outdir, { recursive: true, force: true });
 
