@@ -98,15 +98,24 @@ export async function resizeImage(
 	// release binary uses the embedded worker instead of falling back in-process.
 	if (typeof process.versions.bun === "string") {
 		try {
-			return await resizeImageInWorker("./src/utils/image-resize-worker.ts", inputBytes, mimeType, options);
+			const result = await resizeImageInWorker("./src/utils/image-resize-worker.ts", inputBytes, mimeType, options);
+			if (result) {
+				return result;
+			}
 		} catch {}
 	}
 
+	// The worker is an optimization (keeps WASM resize off the TUI thread). If it
+	// can't resize (returns null) — e.g. its embedded-asset registry isn't
+	// populated — fall through to in-process, which runs where the registry is.
 	try {
-		return await resizeImageInWorker(workerUrl, inputBytes, mimeType, options);
-	} catch {
-		return resizeImageInProcess(inputBytes, mimeType, options);
-	}
+		const result = await resizeImageInWorker(workerUrl, inputBytes, mimeType, options);
+		if (result) {
+			return result;
+		}
+	} catch {}
+
+	return resizeImageInProcess(inputBytes, mimeType, options);
 }
 
 /**

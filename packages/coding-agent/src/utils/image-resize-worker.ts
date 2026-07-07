@@ -23,9 +23,20 @@ if (!port) {
 	throw new Error("image resize worker requires parentPort");
 }
 
+// Workers run in their own module realm, so the main thread's embedded-asset
+// registration doesn't carry over. In a Bun compiled binary, populate the
+// registry here so photon's wasm fallback resolves the embedded `$bunfs` path.
+// Gated on isBunBinary and dynamic so Node (npm) never evaluates the
+// pi-asset: imports, which have no loader under Node.
+const workerUrl = import.meta.url;
+const isBunBinary = workerUrl.includes("$bunfs") || workerUrl.includes("~BUN") || workerUrl.includes("%7EBUN");
+
 port.once("message", (message: unknown) => {
 	void (async () => {
 		try {
+			if (isBunBinary) {
+				await import("../bun/embedded-assets.ts");
+			}
 			if (!isResizeImageWorkerRequest(message)) {
 				throw new Error("Invalid image resize worker request");
 			}
