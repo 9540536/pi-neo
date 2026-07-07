@@ -75,13 +75,20 @@ function patchPhotonWasmRead(): () => void {
 				}
 
 				for (const fallbackPath of fallbackPaths) {
-					if (!fs.existsSync(fallbackPath)) {
-						continue;
+					// Try each fallback directly with readFileSync rather than gating on
+					// existsSync: on Bun compiled binaries the embedded `$bunfs` path
+					// (e.g. "B:/~BUN/..." on Windows) is readable, but existsSync can
+					// report it as missing — which would skip the embedded wasm and
+					// force a disk sidecar. Trying the read and catching avoids that
+					// and the existsSync+read TOCTOU race.
+					try {
+						if (options === undefined) {
+							return originalReadFileSync(fallbackPath);
+						}
+						return originalReadFileSync(fallbackPath, options);
+					} catch {
+						// Try the next fallback path.
 					}
-					if (options === undefined) {
-						return originalReadFileSync(fallbackPath);
-					}
-					return originalReadFileSync(fallbackPath, options);
 				}
 
 				throw error;
