@@ -27,30 +27,35 @@ import { tmpdir } from "node:os";
 function parseArgs(argv) {
 	const args = { target: undefined, entry: undefined, worker: undefined, outfile: undefined, distRoot: undefined };
 	for (let i = 2; i < argv.length; i++) {
-		const next = argv[i + 1];
-		switch (argv[i]) {
+		const a = argv[i];
+		// Accept both `--flag value` and `--flag=value`.
+		const eq = a.indexOf("=");
+		const key = eq >= 0 ? a.slice(0, eq) : a;
+		const inline = eq >= 0 ? a.slice(eq + 1) : undefined;
+		const value = inline ?? argv[i + 1];
+		switch (key) {
 			case "--target":
-				args.target = next;
-				i++;
+				args.target = value;
+				if (inline === undefined) i++;
 				break;
 			case "--entry":
-				args.entry = next;
-				i++;
+				args.entry = value;
+				if (inline === undefined) i++;
 				break;
 			case "--worker":
-				args.worker = next;
-				i++;
+				args.worker = value;
+				if (inline === undefined) i++;
 				break;
 			case "--outfile":
-				args.outfile = next;
-				i++;
+				args.outfile = value;
+				if (inline === undefined) i++;
 				break;
 			case "--dist-root":
-				args.distRoot = next;
-				i++;
+				args.distRoot = value;
+				if (inline === undefined) i++;
 				break;
 			default:
-				throw new Error(`Unknown argument: ${argv[i]}`);
+				throw new Error(`Unknown argument: ${a}`);
 		}
 	}
 	return args;
