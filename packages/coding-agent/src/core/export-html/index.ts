@@ -4,6 +4,7 @@ import { basename, join } from "path";
 import { APP_NAME, getExportTemplateDir } from "../../config.ts";
 import { getResolvedThemeColors, getThemeExportColors } from "../../modes/interactive/theme/theme.ts";
 import { normalizePath, resolvePath } from "../../utils/paths.ts";
+import { getEmbeddedAsset } from "../embedded-assets.ts";
 import type { ToolDefinition } from "../extensions/types.ts";
 import type { SessionEntry } from "../session-manager.ts";
 import { SessionManager } from "../session-manager.ts";
@@ -138,15 +139,22 @@ interface SessionData {
 }
 
 /**
+ * Resolve an HTML export asset. In a Bun compiled binary the asset is embedded
+ * and registered under `export-html/<rel>`; otherwise fall back to disk.
+ */
+function resolveExportAsset(rel: string): string {
+	return getEmbeddedAsset(`export-html/${rel}`) ?? join(getExportTemplateDir(), rel);
+}
+
+/**
  * Core HTML generation logic shared by both export functions.
  */
 function generateHtml(sessionData: SessionData, themeName?: string): string {
-	const templateDir = getExportTemplateDir();
-	const template = readFileSync(join(templateDir, "template.html"), "utf-8");
-	const templateCss = readFileSync(join(templateDir, "template.css"), "utf-8");
-	const templateJs = readFileSync(join(templateDir, "template.js"), "utf-8");
-	const markedJs = readFileSync(join(templateDir, "vendor", "marked.min.js"), "utf-8");
-	const hljsJs = readFileSync(join(templateDir, "vendor", "highlight.min.js"), "utf-8");
+	const template = readFileSync(resolveExportAsset("template.html"), "utf-8");
+	const templateCss = readFileSync(resolveExportAsset("template.css"), "utf-8");
+	const templateJs = readFileSync(resolveExportAsset("template.js"), "utf-8");
+	const markedJs = readFileSync(resolveExportAsset("vendor/marked.min.js"), "utf-8");
+	const hljsJs = readFileSync(resolveExportAsset("vendor/highlight.min.js"), "utf-8");
 
 	const themeVars = generateThemeVars(themeName);
 	const colors = getResolvedThemeColors(themeName);

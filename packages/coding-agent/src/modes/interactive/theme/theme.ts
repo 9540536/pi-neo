@@ -12,6 +12,7 @@ import chalk from "chalk";
 import { type Static, Type } from "typebox";
 import { Compile } from "typebox/compile";
 import { getCustomThemesDir, getThemesDir } from "../../../config.ts";
+import { getEmbeddedAsset } from "../../../core/embedded-assets.ts";
 import type { SourceInfo } from "../../../core/source-info.ts";
 import { closeWatcher, watchWithErrorHandler } from "../../../utils/fs-watch.ts";
 import { highlight, supportsLanguage } from "../../../utils/syntax-highlight.ts";
@@ -429,15 +430,21 @@ let BUILTIN_THEMES: Record<string, ThemeJson> | undefined;
 
 function getBuiltinThemes(): Record<string, ThemeJson> {
 	if (!BUILTIN_THEMES) {
-		const themesDir = getThemesDir();
-		const darkPath = path.join(themesDir, "dark.json");
-		const lightPath = path.join(themesDir, "light.json");
 		BUILTIN_THEMES = {
-			dark: JSON.parse(fs.readFileSync(darkPath, "utf-8")) as ThemeJson,
-			light: JSON.parse(fs.readFileSync(lightPath, "utf-8")) as ThemeJson,
+			dark: loadBuiltinTheme("dark"),
+			light: loadBuiltinTheme("light"),
 		};
 	}
 	return BUILTIN_THEMES;
+}
+
+/** Load a built-in theme JSON, preferring the embedded copy in compiled binaries. */
+function loadBuiltinTheme(name: string): ThemeJson {
+	const embedded = getEmbeddedAsset(`themes/${name}.json`);
+	const content = embedded
+		? fs.readFileSync(embedded, "utf-8")
+		: fs.readFileSync(path.join(getThemesDir(), `${name}.json`), "utf-8");
+	return JSON.parse(content) as ThemeJson;
 }
 
 export function getAvailableThemes(): string[] {
@@ -463,7 +470,7 @@ export function getAvailableThemesWithPaths(): ThemeInfo[] {
 
 	// Built-in themes
 	for (const name of Object.keys(getBuiltinThemes())) {
-		addTheme({ name, path: path.join(themesDir, `${name}.json`) });
+		addTheme({ name, path: getEmbeddedAsset(`themes/${name}.json`) ?? path.join(themesDir, `${name}.json`) });
 	}
 
 	// Custom themes

@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import { Container, Image, Spacer, Text } from "@earendil-works/pi-tui";
 import { getBundledInteractiveAssetPath } from "../../../config.ts";
+import { getEmbeddedAsset } from "../../../core/embedded-assets.ts";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 
@@ -17,7 +18,9 @@ function loadImageBase64(): string | undefined {
 
 	attemptedImageLoad = true;
 	try {
-		cachedImageBase64 = fs.readFileSync(getBundledInteractiveAssetPath(IMAGE_FILENAME)).toString("base64");
+		const imagePath =
+			getEmbeddedAsset(`interactive/assets/${IMAGE_FILENAME}`) ?? getBundledInteractiveAssetPath(IMAGE_FILENAME);
+		cachedImageBase64 = fs.readFileSync(imagePath).toString("base64");
 	} catch {
 		cachedImageBase64 = undefined;
 	}
