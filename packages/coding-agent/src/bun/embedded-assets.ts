@@ -29,6 +29,9 @@ import lightTheme from "pi-asset:modes/interactive/theme/light.json";
 import clipboardNode from "pi-asset:node/clipboard.node";
 import darwinModifiersNode from "pi-asset:node/darwin-modifiers.node";
 import win32ConsoleModeNode from "pi-asset:node/win32-console-mode.node";
+// package.json (read at startup for VERSION/APP_NAME; embedded so --version and
+// self-update work without a companion file).
+import packageJson from "pi-asset:package.json";
 // Photon WASM (image processing). photon-node reads this via fs.readFileSync at
 // runtime; the embedded $bunfs path is fed to it through photon.ts's fallback.
 import photonWasm from "pi-asset:wasm/photon_rs_bg.wasm";
@@ -43,6 +46,7 @@ registerEmbeddedAsset("themes/dark.json", darkTheme);
 registerEmbeddedAsset("themes/light.json", lightTheme);
 registerEmbeddedAsset("interactive/assets/clankolas.png", announcementImage);
 registerEmbeddedAsset("wasm/photon_rs_bg.wasm", photonWasm);
+registerEmbeddedAsset("package.json", packageJson);
 registerEmbeddedAsset("node/clipboard.node", clipboardNode);
 registerEmbeddedAsset("node/darwin-modifiers.node", darwinModifiersNode);
 registerEmbeddedAsset("node/win32-console-mode.node", win32ConsoleModeNode);

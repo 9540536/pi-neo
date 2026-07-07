@@ -2,6 +2,7 @@ import { accessSync, constants, existsSync, readFileSync, realpathSync } from "f
 import { homedir } from "os";
 import { basename, dirname, join, resolve, sep, win32 } from "path";
 import { fileURLToPath } from "url";
+import { getEmbeddedAsset } from "./core/embedded-assets.ts";
 import { spawnProcessSync } from "./utils/child-process.ts";
 import { normalizePath } from "./utils/paths.ts";
 
@@ -478,7 +479,10 @@ interface PackageJson {
 
 let pkg: PackageJson = {};
 try {
-	pkg = JSON.parse(readFileSync(getPackageJsonPath(), "utf-8")) as PackageJson;
+	// In a Bun compiled binary, package.json is embedded (registered before this
+	// module loads); otherwise read it from disk next to the executable/package.
+	const pkgPath = getEmbeddedAsset("package.json") ?? getPackageJsonPath();
+	pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as PackageJson;
 } catch (e: unknown) {
 	const err = e as NodeJS.ErrnoException;
 	if (err.code !== "ENOENT") throw e;

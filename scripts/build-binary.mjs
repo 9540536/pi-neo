@@ -70,12 +70,15 @@ if (!args.entry || !args.outfile) {
 // parent unless overridden via --dist-root.
 const distRoot = resolve(args.distRoot ?? dirname(dirname(resolve(args.entry))));
 const repoRoot = resolve(distRoot, "../../.."); // monorepo root (for node_modules)
+const pkgRoot = dirname(distRoot); // packages/coding-agent (package.json lives here)
 
 // Map each `pi-asset:<name>` import to its source file. Most assets live under
-// dist/ (copied by copy-assets); the Photon WASM lives in node_modules and is
-// referenced by a stable logical name so the Bun-only embedded-assets module
-// stays target-agnostic. Native addons are added to this map per target below.
+// dist/ (copied by copy-assets); the Photon WASM lives in node_modules, package.json
+// at the package root, and native addons (added per target below) in node_modules /
+// tui/native. Stable logical names keep the Bun-only embedded-assets module
+// target-agnostic.
 const assets = {
+	"package.json": join(pkgRoot, "package.json"),
 	"core/export-html/template.html": join(distRoot, "core/export-html/template.html"),
 	"core/export-html/template.css": join(distRoot, "core/export-html/template.css"),
 	"core/export-html/template.js": join(distRoot, "core/export-html/template.js"),
