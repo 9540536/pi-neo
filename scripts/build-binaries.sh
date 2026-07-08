@@ -103,8 +103,19 @@ if [[ "$SKIP_DEPS" == "false" ]]; then
         @mariozechner/clipboard-linux-arm64-gnu@"$CLIPBOARD_VERSION" \
         @mariozechner/clipboard-win32-x64-msvc@"$CLIPBOARD_VERSION" \
         @mariozechner/clipboard-win32-arm64-msvc@"$CLIPBOARD_VERSION"
+
+    echo "==> Fetching vendored fd/rg binaries for embedding..."
+    # fd and rg are embedded into the single-file binary per target (see
+    # scripts/build-binary.mjs). Fetch the matching platform(s) here so the
+    # build can embed them; fd darwin-x64 auto-pins to v10.3.0.
+    if [[ -n "$PLATFORM" ]]; then
+        node scripts/fetch-vendored-bins.mjs --platform "$PLATFORM"
+    else
+        node scripts/fetch-vendored-bins.mjs --all
+    fi
 else
     echo "==> Skipping cross-platform native bindings (--skip-deps)"
+    echo "==> Skipping vendored fd/rg fetch (--skip-deps)"
 fi
 
 if [[ "$SKIP_BUILD" == "false" ]]; then

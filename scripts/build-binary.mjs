@@ -20,7 +20,7 @@
  *     [--dist-root packages/coding-agent/dist]
  */
 
-import { chmodSync, cpSync, mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -150,6 +150,38 @@ function hostTargetKey() {
 const targetKey = args.target ?? hostTargetKey();
 Object.assign(assets, nativeAddons[targetKey] ?? {});
 
+// Standalone executables embedded per target. `fd` (file-finder) and `rg`
+// (ripgrep) are fetched into packages/coding-agent/vendor/<tool>/<platform>/
+// <exe> by scripts/fetch-vendored-bins.mjs (invoked from build-binaries.sh).
+// When no vendored binary is present for a tool/target — e.g. a host
+// `npm run build:binary` without a prior fetch — no entry is added and the
+// plugin below embeds a 0-byte stub so the build still succeeds; at runtime
+// loadEmbeddedBinary then returns undefined and the tool is located/downloaded
+// as usual.
+const embeddedBinaries = {
+	"bun-darwin-arm64": "darwin-arm64",
+	"bun-darwin-x64": "darwin-x64",
+	"bun-linux-x64": "linux-x64",
+	"bun-linux-arm64": "linux-arm64",
+	"bun-windows-x64": "windows-x64",
+	"bun-windows-arm64": "windows-arm64",
+};
+const binPlatform = embeddedBinaries[targetKey];
+if (binPlatform) {
+	for (const tool of ["fd", "rg"]) {
+		const exe = binPlatform.startsWith("windows") ? `${tool}.exe` : tool;
+		const path = join(pkgRoot, "vendor", tool, binPlatform, exe);
+		if (existsSync(path)) {
+			assets[`bin/${tool}`] = path;
+		} else {
+			console.warn(
+				`[build-binary] No vendored ${tool} for ${targetKey} at ${path}; ` +
+					`embedding a stub (${tool} will be located/downloaded at runtime).`,
+			);
+		}
+	}
+}
+
 const entrypoints = [args.entry];
 if (args.worker) {
 	entrypoints.push(args.worker);
@@ -189,7 +221,9 @@ const result = await Bun.build({
 					// darwin addon on a linux build) embed as an empty stub so the
 					// static import in embedded-assets.ts still resolves; the runtime
 					// loader treats a 0-byte payload as "no native available".
-					if (a.path.startsWith("node/")) {
+					// Standalone `bin/` executables do the same when no vendored binary
+					// was available for this target.
+					if (a.path.startsWith("node/") || a.path.startsWith("bin/")) {
 						return { contents: new Uint8Array(0), loader: "file" };
 					}
 					// Any other asset is resolved relative to dist/.

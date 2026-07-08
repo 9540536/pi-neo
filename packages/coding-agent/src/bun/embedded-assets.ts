@@ -12,8 +12,12 @@
  * imports — which have no loader under Node — are never evaluated there.
  */
 
+// Standalone executables (the `fd` file-finder and `rg` ripgrep), embedded per
+// target so the find/grep tools and @ autocomplete work without a first-run
+// download.
+import fdBin from "pi-asset:bin/fd";
+import rgBin from "pi-asset:bin/rg";
 import templateCss from "pi-asset:core/export-html/template.css";
-
 // HTML export pipeline (templates + vendored JS, read as text and inlined).
 import templateHtml from "pi-asset:core/export-html/template.html";
 import templateJs from "pi-asset:core/export-html/template.js";
@@ -50,6 +54,8 @@ registerEmbeddedAsset("package.json", packageJson);
 registerEmbeddedAsset("node/clipboard.node", clipboardNode);
 registerEmbeddedAsset("node/darwin-modifiers.node", darwinModifiersNode);
 registerEmbeddedAsset("node/win32-console-mode.node", win32ConsoleModeNode);
+registerEmbeddedAsset("bin/fd", fdBin);
+registerEmbeddedAsset("bin/rg", rgBin);
 
 // Expose a lazy native-addon loader on globalThis so the pi-tui package (which
 // this package depends on and therefore cannot import back) can load embedded
